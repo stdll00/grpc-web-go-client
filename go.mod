@@ -1,4 +1,4 @@
-module github.com/ktr0731/grpc-web-go-client
+module github.com/stdll00/grpc-web-go-client
 
 require (
 	github.com/google/go-cmp v0.6.0
