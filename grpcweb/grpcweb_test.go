@@ -45,11 +45,11 @@ func TestWithGeneratedClient(t *testing.T) {
 	s := &httpServer{}
 	go http.ListenAndServe(addr, s)
 
-	dial, err := DialContext(addr)
+	dial, err := Dial(addr)
 	if err != nil {
 		panic("err")
 	}
-	client := helloworld.NewGreeterClient(dial) // just check interface
+	client := helloworld.NewGreeterClient(dial)
 	_, err = client.SayHello(ctx, &helloworld.HelloRequest{Name: "hello"})
 	fmt.Print(s.lastRequest)
 	if err != nil {

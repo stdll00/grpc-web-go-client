@@ -26,7 +26,7 @@ func (c *ClientConn) NewStream(ctx context.Context, desc *grpc.StreamDesc, metho
 	return nil, status.Error(codes.Unimplemented, "not implemented client side")
 }
 
-func DialContext(host string, opts ...DialOption) (*ClientConn, error) {
+func Dial(host string, opts ...DialOption) (*ClientConn, error) {
 	opt := defaultDialOptions
 	for _, o := range opts {
 		o(&opt)
