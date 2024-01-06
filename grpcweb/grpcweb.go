@@ -38,7 +38,10 @@ func DialContext(host string, opts ...DialOption) (*ClientConn, error) {
 }
 
 func (c *ClientConn) Invoke(ctx context.Context, method string, args, reply any, opts ...grpc.CallOption) error {
-	callOptions := c.applyCallOptions(opts)
+	callOptions, err := c.applyCallOptions(opts)
+	if err != nil {
+		return err
+	}
 	codec := callOptions.codec
 
 	tr := transport.NewUnary(c.host, nil)
@@ -103,7 +106,7 @@ func (c *ClientConn) Invoke(ctx context.Context, method string, args, reply any,
 	return st.Err()
 }
 
-func (c *ClientConn) applyCallOptions(opts []grpc.CallOption) *callOptions {
+func (c *ClientConn) applyCallOptions(opts []grpc.CallOption) (*callOptions, error) {
 	callOptions := defaultCallOptions
 	for _, o := range opts {
 		switch v := o.(type) {
@@ -113,11 +116,12 @@ func (c *ClientConn) applyCallOptions(opts []grpc.CallOption) *callOptions {
 			callOptions.header = v.HeaderAddr
 		case grpc.TrailerCallOption:
 			callOptions.trailer = v.TrailerAddr
+		case grpc.EmptyCallOption:
 		default:
-			panic("not supported.")
+			return nil, fmt.Errorf("%v is not supported type", o)
 		}
 	}
-	return &callOptions
+	return &callOptions, nil
 }
 
 // copied from rpc_util.go#msgHeader
