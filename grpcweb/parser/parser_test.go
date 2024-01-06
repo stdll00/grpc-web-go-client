@@ -9,7 +9,7 @@ import (
 
 	"errors"
 	"github.com/google/go-cmp/cmp"
-	"github.com/ktr0731/grpc-web-go-client/grpcweb/parser"
+	"github.com/stdll00/grpc-web-go-client/grpcweb/parser"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"

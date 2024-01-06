@@ -10,8 +10,8 @@ import (
 	"sync"
 
 	"errors"
-	"github.com/ktr0731/grpc-web-go-client/grpcweb/parser"
-	"github.com/ktr0731/grpc-web-go-client/grpcweb/transport"
+	"github.com/stdll00/grpc-web-go-client/grpcweb/parser"
+	"github.com/stdll00/grpc-web-go-client/grpcweb/transport"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"

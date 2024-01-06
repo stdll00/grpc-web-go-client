@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/ktr0731/grpc-test/api"
-	"github.com/ktr0731/grpc-web-go-client/grpcweb/transport"
+	"github.com/stdll00/grpc-web-go-client/grpcweb/transport"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
