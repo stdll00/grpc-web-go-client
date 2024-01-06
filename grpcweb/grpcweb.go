@@ -4,21 +4,26 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"fmt"
-	"io"
-	"net/http"
-
 	"errors"
+	"fmt"
 	"github.com/ktr0731/grpc-web-go-client/grpcweb/parser"
 	"github.com/ktr0731/grpc-web-go-client/grpcweb/transport"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/encoding"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+	"io"
+	"net/http"
 )
 
 type ClientConn struct {
 	host        string
 	dialOptions *dialOptions
+}
+
+func (c *ClientConn) NewStream(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+	return nil, status.Error(codes.Unimplemented, "not implemented client side")
 }
 
 func DialContext(host string, opts ...DialOption) (*ClientConn, error) {
@@ -32,7 +37,7 @@ func DialContext(host string, opts ...DialOption) (*ClientConn, error) {
 	}, nil
 }
 
-func (c *ClientConn) Invoke(ctx context.Context, method string, args, reply interface{}, opts ...CallOption) error {
+func (c *ClientConn) Invoke(ctx context.Context, method string, args, reply any, opts ...grpc.CallOption) error {
 	callOptions := c.applyCallOptions(opts)
 	codec := callOptions.codec
 
@@ -87,7 +92,7 @@ func (c *ClientConn) Invoke(ctx context.Context, method string, args, reply inte
 		return errors.New("unexpected header")
 	}
 
-	status, trailer, err := parser.ParseStatusAndTrailer(rawBody, resHeader.ContentLength)
+	st, trailer, err := parser.ParseStatusAndTrailer(rawBody, resHeader.ContentLength)
 	if err != nil {
 		return fmt.Errorf("failed to parse status and trailer: %w", err)
 	}
@@ -95,42 +100,22 @@ func (c *ClientConn) Invoke(ctx context.Context, method string, args, reply inte
 		*callOptions.trailer = trailer
 	}
 
-	return status.Err()
+	return st.Err()
 }
 
-func (c *ClientConn) NewClientStream(desc *grpc.StreamDesc, method string, opts ...CallOption) (ClientStream, error) {
-	panic("not implemented")
-}
-
-func (c *ClientConn) NewServerStream(desc *grpc.StreamDesc, method string, opts ...CallOption) (ServerStream, error) {
-	if !desc.ServerStreams {
-		return nil, errors.New("not a server stream RPC")
-	}
-	return &serverStream{
-		endpoint:    method,
-		transport:   transport.NewUnary(c.host, nil),
-		callOptions: c.applyCallOptions(opts),
-	}, nil
-}
-
-func (c *ClientConn) NewBidiStream(desc *grpc.StreamDesc, method string, opts ...CallOption) (BidiStream, error) {
-	if !desc.ServerStreams || !desc.ClientStreams {
-		return nil, errors.New("not a bidi stream RPC")
-	}
-	stream, err := c.NewClientStream(desc, method, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create a new client stream: %w", err)
-	}
-	return &bidiStream{
-		clientStream: stream.(*clientStream),
-	}, nil
-}
-
-func (c *ClientConn) applyCallOptions(opts []CallOption) *callOptions {
-	callOpts := append(c.dialOptions.defaultCallOptions, opts...)
+func (c *ClientConn) applyCallOptions(opts []grpc.CallOption) *callOptions {
 	callOptions := defaultCallOptions
-	for _, o := range callOpts {
-		o(&callOptions)
+	for _, o := range opts {
+		switch v := o.(type) {
+		case grpc.CustomCodecCallOption:
+			callOptions.codec = convertToEncodingCodec(v.Codec)
+		case grpc.HeaderCallOption:
+			callOptions.header = v.HeaderAddr
+		case grpc.TrailerCallOption:
+			callOptions.trailer = v.TrailerAddr
+		default:
+			panic("not supported.")
+		}
 	}
 	return &callOptions
 }

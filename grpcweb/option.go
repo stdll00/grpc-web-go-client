@@ -1,6 +1,7 @@
 package grpcweb
 
 import (
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/encoding"
 	"google.golang.org/grpc/encoding/proto"
@@ -15,18 +16,12 @@ var (
 )
 
 type dialOptions struct {
-	defaultCallOptions   []CallOption
+	defaultCallOptions   callOptions
 	insecure             bool
 	transportCredentials credentials.TransportCredentials
 }
 
 type DialOption func(*dialOptions)
-
-func WithDefaultCallOptions(opts ...CallOption) DialOption {
-	return func(opt *dialOptions) {
-		opt.defaultCallOptions = opts
-	}
-}
 
 func WithInsecure() DialOption {
 	return func(opt *dialOptions) {
@@ -45,24 +40,16 @@ type callOptions struct {
 	header, trailer *metadata.MD
 }
 
-type CallOption func(*callOptions)
-
-func CallContentSubtype(contentSubtype string) CallOption {
-	return func(opt *callOptions) {
-		opt.codec = encoding.GetCodec(contentSubtype)
-	}
+type grpcCodecWrapper struct {
+	grpc.Codec
 }
 
-func Header(h *metadata.MD) CallOption {
-	return func(opt *callOptions) {
-		*h = metadata.New(nil)
-		opt.header = h
-	}
+func (g grpcCodecWrapper) Name() string {
+	return g.String()
 }
 
-func Trailer(t *metadata.MD) CallOption {
-	return func(opt *callOptions) {
-		*t = metadata.New(nil)
-		opt.trailer = t
-	}
+func convertToEncodingCodec(codec grpc.Codec) encoding.Codec {
+	return &grpcCodecWrapper{Codec: codec}
 }
+
+var _ encoding.Codec = &grpcCodecWrapper{nil}
