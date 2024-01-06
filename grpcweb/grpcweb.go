@@ -98,18 +98,7 @@ func (c *ClientConn) Invoke(ctx context.Context, method string, args, reply inte
 }
 
 func (c *ClientConn) NewClientStream(desc *grpc.StreamDesc, method string, opts ...CallOption) (ClientStream, error) {
-	if !desc.ClientStreams {
-		return nil, errors.New("not a client stream RPC")
-	}
-	tr, err := transport.NewClientStream(c.host, method)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create a new transport stream")
-	}
-	return &clientStream{
-		endpoint:    method,
-		transport:   tr,
-		callOptions: c.applyCallOptions(opts),
-	}, nil
+	panic("not implemented")
 }
 
 func (c *ClientConn) NewServerStream(desc *grpc.StreamDesc, method string, opts ...CallOption) (ServerStream, error) {
