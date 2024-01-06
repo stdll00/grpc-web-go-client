@@ -2,7 +2,8 @@ package transport
 
 import (
 	"context"
-	"github.com/pkg/errors"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -42,7 +43,7 @@ func (t *httpTransport) Send(ctx context.Context, endpoint, contentType string, 
 	url := u.String()
 	req, err := http.NewRequest(http.MethodPost, url, body)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to build the API request")
+		return nil, nil, fmt.Errorf("failed to build the API request: %w", err)
 	}
 
 	req.Header = t.Header()
@@ -51,7 +52,7 @@ func (t *httpTransport) Send(ctx context.Context, endpoint, contentType string, 
 
 	res, err := t.client.Do(req)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to send the API")
+		return nil, nil, fmt.Errorf("failed to send the API: %w", err)
 	}
 
 	return res.Header, res.Body, nil

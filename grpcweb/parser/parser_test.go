@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"errors"
 	"github.com/google/go-cmp/cmp"
 	"github.com/ktr0731/grpc-web-go-client/grpcweb/parser"
-	"github.com/pkg/errors"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"

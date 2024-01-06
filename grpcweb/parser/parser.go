@@ -4,12 +4,12 @@ import (
 	"bufio"
 	"encoding/base64"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/pkg/errors"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -33,7 +33,7 @@ func ParseResponseHeader(r io.Reader) (*Header, error) {
 	var h [5]byte
 	n, err := r.Read(h[:])
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read header")
+		return nil, fmt.Errorf("failed to read header: %w", err)
 	}
 	if n != len(h) {
 		return nil, io.ErrUnexpectedEOF

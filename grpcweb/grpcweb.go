@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"net/http"
 
+	"errors"
 	"github.com/ktr0731/grpc-web-go-client/grpcweb/parser"
 	"github.com/ktr0731/grpc-web-go-client/grpcweb/transport"
-	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/encoding"
 	"google.golang.org/grpc/metadata"
@@ -40,7 +41,7 @@ func (c *ClientConn) Invoke(ctx context.Context, method string, args, reply inte
 
 	r, err := encodeRequestBody(codec, args)
 	if err != nil {
-		return errors.Wrap(err, "failed to build the request body")
+		return fmt.Errorf("failed to build the request body: %w", err)
 	}
 
 	md, ok := metadata.FromOutgoingContext(ctx)
@@ -55,7 +56,7 @@ func (c *ClientConn) Invoke(ctx context.Context, method string, args, reply inte
 	contentType := "application/grpc-web+" + codec.Name()
 	header, rawBody, err := tr.Send(ctx, method, contentType, r)
 	if err != nil {
-		return errors.Wrap(err, "failed to send the request")
+		return fmt.Errorf("failed to send the request: %w", err)
 	}
 	defer rawBody.Close()
 
@@ -65,21 +66,21 @@ func (c *ClientConn) Invoke(ctx context.Context, method string, args, reply inte
 
 	resHeader, err := parser.ParseResponseHeader(rawBody)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse response header")
+		return fmt.Errorf("failed to parse response header: %w", err)
 	}
 
 	if resHeader.IsMessageHeader() {
 		resBody, err := parser.ParseLengthPrefixedMessage(rawBody, resHeader.ContentLength)
 		if err != nil {
-			return errors.Wrap(err, "failed to parse the response body")
+			return fmt.Errorf("failed to parse the response body: %w", err)
 		}
 		if err := codec.Unmarshal(resBody, reply); err != nil {
-			return errors.Wrapf(err, "failed to unmarshal response body by codec %s", codec.Name())
+			return fmt.Errorf("failed to unmarshal response body by codec %s: %w", codec.Name(), err)
 		}
 
 		resHeader, err = parser.ParseResponseHeader(rawBody)
 		if err != nil {
-			return errors.Wrap(err, "failed to parse response header")
+			return fmt.Errorf("failed to parse response header: %w", err)
 		}
 	}
 	if !resHeader.IsTrailerHeader() {
@@ -88,7 +89,7 @@ func (c *ClientConn) Invoke(ctx context.Context, method string, args, reply inte
 
 	status, trailer, err := parser.ParseStatusAndTrailer(rawBody, resHeader.ContentLength)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse status and trailer")
+		return fmt.Errorf("failed to parse status and trailer: %w", err)
 	}
 	if callOptions.trailer != nil {
 		*callOptions.trailer = trailer
@@ -118,7 +119,7 @@ func (c *ClientConn) NewBidiStream(desc *grpc.StreamDesc, method string, opts ..
 	}
 	stream, err := c.NewClientStream(desc, method, opts...)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create a new client stream")
+		return nil, fmt.Errorf("failed to create a new client stream: %w", err)
 	}
 	return &bidiStream{
 		clientStream: stream.(*clientStream),
@@ -149,7 +150,7 @@ func header(body []byte) []byte {
 func encodeRequestBody(codec encoding.Codec, in interface{}) (io.Reader, error) {
 	body, err := codec.Marshal(in)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal the request body")
+		return nil, fmt.Errorf("failed to marshal the request body: %w", err)
 	}
 	buf := bytes.NewBuffer(make([]byte, 0, headerLen+len(body)))
 	buf.Write(header(body))

@@ -3,14 +3,15 @@ package grpcweb
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"sync"
 
+	"errors"
 	"github.com/ktr0731/grpc-web-go-client/grpcweb/parser"
 	"github.com/ktr0731/grpc-web-go-client/grpcweb/transport"
-	"github.com/pkg/errors"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -52,7 +53,7 @@ func (s *clientStream) Header() (metadata.MD, error) {
 	md := metadata.New(nil)
 	headers, err := s.transport.Header()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get headers")
+		return nil, fmt.Errorf("failed to get headers: %w", err)
 	}
 	for k, v := range headers {
 		md.Append(k, v...)
@@ -85,7 +86,7 @@ func (s *clientStream) trailer() metadata.MD {
 func (s *clientStream) Send(ctx context.Context, req interface{}) error {
 	r, err := encodeRequestBody(s.callOptions.codec, req)
 	if err != nil {
-		return errors.Wrap(err, "failed to build the request")
+		return fmt.Errorf("failed to build the request: %w", err)
 	}
 
 	h := make(http.Header)
@@ -100,14 +101,14 @@ func (s *clientStream) Send(ctx context.Context, req interface{}) error {
 	s.transport.SetRequestHeader(h)
 
 	if err := s.transport.Send(ctx, r); err != nil {
-		return errors.Wrap(err, "failed to send the request")
+		return fmt.Errorf("failed to send the request: %w", err)
 	}
 	return nil
 }
 
 func (s *clientStream) CloseAndReceive(ctx context.Context, res interface{}) error {
 	if err := s.transport.CloseSend(); err != nil {
-		return errors.Wrap(err, "failed to close the send stream")
+		return fmt.Errorf("failed to close the send stream: %w", err)
 	}
 
 	s.closed.Store(true)
@@ -117,7 +118,7 @@ func (s *clientStream) CloseAndReceive(ctx context.Context, res interface{}) err
 		// Parse headers as trailers.
 		trailer, err := s.Header()
 		if err != nil {
-			return errors.Wrap(err, "failed to get header instead of trailer")
+			return fmt.Errorf("failed to get header instead of trailer: %w", err)
 		}
 		s.trailerMu.Lock()
 		s.trailerMD = trailer
@@ -128,7 +129,7 @@ func (s *clientStream) CloseAndReceive(ctx context.Context, res interface{}) err
 		return statusFromHeader(trailer).Err()
 	}
 	if err != nil {
-		return errors.Wrap(err, "failed to receive the response")
+		return fmt.Errorf("failed to receive the response: %w", err)
 	}
 
 	var closeOnce sync.Once
@@ -136,17 +137,17 @@ func (s *clientStream) CloseAndReceive(ctx context.Context, res interface{}) err
 
 	resHeader, err := parser.ParseResponseHeader(rawBody)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse response header")
+		return fmt.Errorf("failed to parse response header: %w", err)
 	}
 
 	if resHeader.IsMessageHeader() {
 		resBody, err := parser.ParseLengthPrefixedMessage(rawBody, resHeader.ContentLength)
 		if err != nil {
-			return errors.Wrap(err, "failed to parse the response body")
+			return fmt.Errorf("failed to parse the response body: %w", err)
 		}
 		codec := s.callOptions.codec
 		if err := codec.Unmarshal(resBody, res); err != nil {
-			return errors.Wrapf(err, "failed to unmarshal response body by codec %s", codec.Name())
+			return fmt.Errorf("failed to unmarshal response body by codec %s: %w", codec.Name(), err)
 		}
 
 		closeOnce.Do(func() { rawBody.Close() })
@@ -154,14 +155,14 @@ func (s *clientStream) CloseAndReceive(ctx context.Context, res interface{}) err
 		// improbable-eng/grpc-web returns the trailer in another message.
 		rawBody2, err := s.transport.Receive(ctx)
 		if err != nil {
-			return errors.Wrap(err, "failed to receive the response trailer")
+			return fmt.Errorf("failed to receive the response trailer: %w", err)
 		}
 		defer rawBody2.Close()
 		rawBody = rawBody2
 
 		resHeader, err = parser.ParseResponseHeader(rawBody2)
 		if err != nil {
-			return errors.Wrap(err, "failed to parse response header2")
+			return fmt.Errorf("failed to parse response header2: %w", err)
 		}
 	}
 	if !resHeader.IsTrailerHeader() {
@@ -170,7 +171,7 @@ func (s *clientStream) CloseAndReceive(ctx context.Context, res interface{}) err
 
 	status, trailer, err := parser.ParseStatusAndTrailer(rawBody, resHeader.ContentLength)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse status and trailer")
+		return fmt.Errorf("failed to parse status and trailer: %w", err)
 	}
 	s.trailerMu.Lock()
 	defer s.trailerMu.Unlock()
@@ -220,7 +221,7 @@ func (s *serverStream) Send(ctx context.Context, req interface{}) error {
 
 	r, err := encodeRequestBody(codec, req)
 	if err != nil {
-		return errors.Wrap(err, "failed to build the request body")
+		return fmt.Errorf("failed to build the request body: %w", err)
 	}
 
 	md, ok := metadata.FromOutgoingContext(ctx)
@@ -235,7 +236,7 @@ func (s *serverStream) Send(ctx context.Context, req interface{}) error {
 	contentType := "application/grpc-web+" + codec.Name()
 	header, rawBody, err := s.transport.Send(ctx, s.endpoint, contentType, r)
 	if err != nil {
-		return errors.Wrap(err, "failed to send the request")
+		return fmt.Errorf("failed to send the request: %w", err)
 	}
 	s.header = toMetadata(header)
 	s.resStream = rawBody
@@ -275,14 +276,14 @@ func (s *serverStream) Receive(ctx context.Context, res interface{}) (err error)
 			return err
 		}
 		if err := s.callOptions.codec.Unmarshal(msg, res); err != nil {
-			return errors.Wrap(err, "failed to unmarshal response body")
+			return fmt.Errorf("failed to unmarshal response body: %w", err)
 		}
 		return nil
 	}
 
 	status, trailer, err := parser.ParseStatusAndTrailer(s.resStream, length)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse trailer")
+		return fmt.Errorf("failed to parse trailer: %w", err)
 	}
 	s.closed = true
 	s.trailer = trailer
@@ -330,7 +331,7 @@ func (s *bidiStream) Receive(ctx context.Context, res interface{}) error {
 		// Parse headers as trailers.
 		trailer, err := s.Header()
 		if err != nil {
-			return errors.Wrap(err, "failed to get header instead of trailer")
+			return fmt.Errorf("failed to get header instead of trailer: %w", err)
 		}
 
 		s.trailerMu.Lock()
@@ -342,12 +343,12 @@ func (s *bidiStream) Receive(ctx context.Context, res interface{}) error {
 		return statusFromHeader(trailer).Err()
 	}
 	if err != nil {
-		return errors.Wrap(err, "failed to receive the response")
+		return fmt.Errorf("failed to receive the response: %w", err)
 	}
 
 	resHeader, err := parser.ParseResponseHeader(rawBody)
 	if err != nil {
-		return errors.Wrap(err, "failed to parse response header")
+		return fmt.Errorf("failed to parse response header: %w", err)
 	}
 
 	switch {
@@ -357,7 +358,7 @@ func (s *bidiStream) Receive(ctx context.Context, res interface{}) error {
 			return err
 		}
 		if err := s.callOptions.codec.Unmarshal(msg, res); err != nil {
-			return errors.Wrap(err, "failed to unmarshal response body")
+			return fmt.Errorf("failed to unmarshal response body: %w", err)
 		}
 		return nil
 	case resHeader.IsTrailerHeader():
@@ -365,7 +366,7 @@ func (s *bidiStream) Receive(ctx context.Context, res interface{}) error {
 
 		status, trailer, err := parser.ParseStatusAndTrailer(rawBody, resHeader.ContentLength)
 		if err != nil {
-			return errors.Wrap(err, "failed to parse trailer")
+			return fmt.Errorf("failed to parse trailer: %w", err)
 		}
 		s.trailerMu.Lock()
 		s.trailerMD = trailer
@@ -382,7 +383,7 @@ func (s *bidiStream) Receive(ctx context.Context, res interface{}) error {
 
 func (s *bidiStream) CloseSend() error {
 	if err := s.transport.CloseSend(); err != nil {
-		return errors.Wrap(err, "failed to close the send stream")
+		return fmt.Errorf("failed to close the send stream: %w", err)
 	}
 	s.sentCloseSend.Store(true)
 	return nil
