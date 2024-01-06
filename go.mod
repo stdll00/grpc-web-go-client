@@ -2,7 +2,7 @@ module github.com/ktr0731/grpc-web-go-client
 
 require (
 	github.com/google/go-cmp v0.6.0
-	github.com/ktr0731/grpc-test v0.1.12
+	github.com/ktr0731/grpc-test v0.1.4
 	go.uber.org/atomic v1.11.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240102182953-50ed04b92917
 	google.golang.org/grpc v1.60.1
