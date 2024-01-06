@@ -2,7 +2,7 @@ package grpcweb
 
 import (
 	"context"
-	"fmt"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/examples/helloworld/helloworld"
 	"io"
 	"net/http"
@@ -46,12 +46,9 @@ func TestWithGeneratedClient(t *testing.T) {
 	go http.ListenAndServe(addr, s)
 
 	dial, err := Dial(addr)
-	if err != nil {
-		panic("err")
-	}
+	require.NoError(t, err, "dial must be no error")
 	client := helloworld.NewGreeterClient(dial)
 	_, err = client.SayHello(ctx, &helloworld.HelloRequest{Name: "hello"})
-	fmt.Print(s.lastRequest)
 	if err != nil {
 		return
 	}
