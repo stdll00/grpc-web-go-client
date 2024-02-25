@@ -28,6 +28,7 @@ func (c *ClientConn) NewStream(ctx context.Context, desc *grpc.StreamDesc, metho
 
 func Dial(host string, opts ...DialOption) (*ClientConn, error) {
 	opt := defaultDialOptions
+	// Validate host!
 	for _, o := range opts {
 		o(&opt)
 	}
@@ -60,7 +61,6 @@ func (c *ClientConn) Invoke(ctx context.Context, method string, args, reply any,
 			}
 		}
 	}
-
 	contentType := "application/grpc-web+" + codec.Name()
 	header, rawBody, err := tr.Send(ctx, method, contentType, r)
 	if err != nil {
@@ -74,7 +74,7 @@ func (c *ClientConn) Invoke(ctx context.Context, method string, args, reply any,
 
 	resHeader, err := parser.ParseResponseHeader(rawBody)
 	if err != nil {
-		return fmt.Errorf("failed to parse response header: %w", err)
+		return status.Error(codes.Unavailable, fmt.Sprintf("failed to parse response header: %s", err.Error()))
 	}
 
 	if resHeader.IsMessageHeader() {
