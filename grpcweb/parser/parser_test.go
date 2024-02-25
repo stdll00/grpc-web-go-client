@@ -46,9 +46,8 @@ func TestParseResponseHeader(t *testing.T) {
 			expectedErr: io.ErrUnexpectedEOF,
 		},
 		"the length is zero": {
-			in:          []byte{0x00, 0x00, 0x00, 0x00, 0x00},
-			wantErr:     true,
-			expectedErr: io.EOF,
+			in:      []byte{0x00, 0x00, 0x00, 0x00, 0x00},
+			wantErr: false,
 		},
 	}
 
@@ -99,19 +98,24 @@ func TestParseLengthPrefixedMessage(t *testing.T) {
 		},
 		"EOF": {
 			bytes:       []byte{},
-			length:      0,
+			length:      1,
 			wantErr:     true,
 			expectedErr: io.EOF,
+		},
+		"Empty": {
+			bytes:   []byte{},
+			length:  0,
+			wantErr: false,
 		},
 	}
 
 	for name, c := range cases {
 		c := c
 		t.Run(name, func(t *testing.T) {
-			_, err := parser.ParseLengthPrefixedMessage(bytes.NewReader(c.bytes), c.length)
+			v, err := parser.ParseLengthPrefixedMessage(bytes.NewReader(c.bytes), c.length)
 			if c.wantErr {
 				if err == nil {
-					t.Fatalf("expected a error, but got nil")
+					t.Fatalf("expected a error, but got nil %v", v)
 				}
 				if c.expectedErr != nil && !errors.Is(err, c.expectedErr) {
 					t.Errorf("expected error is '%v', but got '%v'", c.expectedErr, err)

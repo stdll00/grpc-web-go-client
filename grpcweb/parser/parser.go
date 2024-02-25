@@ -30,19 +30,12 @@ func (h *Header) IsTrailerHeader() bool {
 }
 
 func ParseResponseHeader(r io.Reader) (*Header, error) {
-	var h [5]byte
-	n, err := r.Read(h[:])
+	h := make([]byte, 5)
+	_, err := io.ReadFull(r, h)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read header: %w", err)
 	}
-	if n != len(h) {
-		return nil, io.ErrUnexpectedEOF
-	}
-
 	length := binary.BigEndian.Uint32(h[1:])
-	if length == 0 {
-		return nil, io.EOF
-	}
 	return &Header{
 		flag:          h[0],
 		ContentLength: length,
@@ -51,16 +44,8 @@ func ParseResponseHeader(r io.Reader) (*Header, error) {
 
 func ParseLengthPrefixedMessage(r io.Reader, length uint32) ([]byte, error) {
 	content := make([]byte, length)
-	n, err := r.Read(content)
-	switch {
-	case uint32(n) != length:
-		return nil, io.ErrUnexpectedEOF
-	case err == io.EOF:
-		return nil, io.EOF
-	case err != nil:
-		return nil, err
-	}
-	return content, nil
+	_, err := io.ReadFull(r, content)
+	return content, err
 }
 
 func ParseStatusAndTrailer(r io.Reader, length uint32) (*status.Status, metadata.MD, error) {
