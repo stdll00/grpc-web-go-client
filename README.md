@@ -6,7 +6,7 @@ Easy to use, compatibles with generated client by `protoc-gen-go-grpc`.
 Stream, grpc-web-text is not supported now.  
 This is fork of https://github.com/ktr0731/grpc-web-go-client 
 
-Usage: (examples/main.go)
+Usage: (full example: [examples/main.go](examples/main.go))
 ```go
 dial, _ := grpcweb.Dial(addr, grpcweb.WithInsecure())
 client := helloworld.NewGreeterClient(dial) // compatible with normal grpc-go code!
