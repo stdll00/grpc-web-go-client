@@ -13,14 +13,16 @@ client := helloworld.NewGreeterClient(dial) // compatible with normal grpc-go co
 res, _ := client.SayHello(context.Background(), &helloworld.HelloRequest{Name: "hello"})
 ```
 
-### How to run
+### How to run on your machine
+
+Common environment variables.
 ```
 export ENVOY_ADMIN_PORT=8001 
 export GRPC_PORT=8002 
 export GRPC_WEB_PORT=8003
 ```
 
-
+Run the following in another terminal.
 ```
 ENVOY_CONFIG=$(envsubst < examples/envoy.envsubst.yaml) &&  envoy --config-yaml $ENVOY_CONFIG
 go run examples/server/main.go
